@@ -1,8 +1,9 @@
 package main.java.nl.hu.hadoop.wordcount;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
-import java.io.IOException;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
@@ -12,8 +13,8 @@ import org.apache.hadoop.mapreduce.lib.input.*;
 import org.apache.hadoop.mapreduce.lib.output.*;
 
 public class WordCount {
-	public static void main(String[] args)
-			throws IllegalArgumentException, IOException, ClassNotFoundException, InterruptedException {
+
+	public static void main(String[] args) throws Exception {
 		Job job = new Job();
 		job.setJarByClass(WordCount.class);
 
@@ -31,52 +32,34 @@ public class WordCount {
 }
 
 class WordCountMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
-	public int getDivisorSum(int n) {
-		int root = (int) Math.sqrt(n);
-		int sum = 1;
-		int addFornumber = 1;
-		int beginFornumber = 2;
-
-		if (n % 2 != 0) { //check of hij oneven is
-			addFornumber = 2;
-			beginFornumber = 3;
-		}
-
-		for (int i = beginFornumber; i <= root; i += addFornumber) {
-			if (n % i == 0) {
-				sum += i;
-				int d = n / i;
-				if (d != i)
-					sum += d;
-			}
-		}
-		return sum;
-	}
 
 	public void map(LongWritable Key, Text value, Context context) throws IOException, InterruptedException {
-		int max = Integer.parseInt(value.toString());
-		//int max = 1000000;
-		//Bovenstaand comment gebruiken voor als er niks staat in de input file
-
-		for (int i = 1; i <= max; i++) {
-			int a = getDivisorSum(i);
-			int b = getDivisorSum(a);
-			if ((i == b && a != b) && i > a) {
-				context.write(new Text(Integer.toString(i)), new IntWritable(a));
+		String[] words = value.toString().split(" ");
+		for (String word : words){
+			
+			String wordResult = word.replaceAll("[-+.^:,()*&%!@#$]","");
+			if (wordResult.length()>1){
+				String reverseWord = new StringBuilder(wordResult.toLowerCase()).reverse().toString();
+				char lastLetter = reverseWord.charAt(0);
+				char firstLetter = wordResult.charAt(0);
+				if (lastLetter == 'a' || lastLetter == 'e' || lastLetter == 'u' || lastLetter == 'i' || lastLetter == 'o'){
+					if (firstLetter >= 'a' && firstLetter <= 'z'){
+						context.write(new Text(wordResult), new IntWritable(1));
+					}
+				}
 			}
 		}
 	}
 }
 
 class WordCountReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
-
-	public void reduce(Text key, Iterable<IntWritable> values, Context context)
-			throws IOException, InterruptedException {
-		int hoihoi = 0;
-
+	public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+		int s = 0;
 		for (IntWritable i : values) {
-			hoihoi = i.get();
+			s = i.get();
 		}
-		context.write(key, new IntWritable(hoihoi));
+		
+		context.write(key, new IntWritable(s));
+		
 	}
 }
